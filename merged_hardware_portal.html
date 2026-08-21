@@ -1,0 +1,118 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Hardware Portal</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background-color: #f4f4f9; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        select, input, button { width: 100%; padding: 10px; margin-top: 10px; }
+        .page { display: none; }
+        .active { display: block; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Navigation -->
+        <button onclick="showPage('userPage')">User Request</button>
+        <button onclick="showPage('loginPage')">Admin Dashboard</button>
+
+        <!-- User Page -->
+        <div id="userPage" class="page active">
+            <h2>Hardware Request</h2>
+            <select id="hardwareItem" onchange="showForm()">
+                <option value="">--Select--</option>
+                <option value="Keyboard">Keyboard</option>
+                <option value="Mouse">Mouse</option>
+                <option value="HDMI Cable">HDMI Cable</option>
+                <option value="Monitor">Monitor</option>
+            </select>
+            <div id="detailsForm" style="display:none;">
+                <input type="email" id="email" placeholder="Email ID" required>
+                <input type="text" id="empId" placeholder="Employee ID" required>
+                <button onclick="submitRequest()">Submit Request</button>
+            </div>
+            <p id="statusMsg"></p>
+        </div>
+
+        <!-- Admin Login -->
+        <div id="loginPage" class="page">
+            <h2>Admin Login</h2>
+            <input type="password" id="pass" placeholder="Enter Password">
+            <button onclick="login()">Login</button>
+        </div>
+
+        <!-- Admin Dashboard -->
+        <div id="adminPanel" class="page">
+            <h2>Admin Dashboard</h2>
+            <button onclick="downloadCSV()">Download CSV</button>
+            <table id="reqTable">
+                <thead><tr><th>Item</th><th>Email</th><th>Emp ID</th><th>Time</th><th>Status</th><th>Action</th></tr></thead>
+                <tbody id="reqBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        function showPage(id) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        }
+
+        function showForm() {
+            document.getElementById('detailsForm').style.display = document.getElementById('hardwareItem').value ? 'block' : 'none';
+        }
+
+        function submitRequest() {
+            const item = document.getElementById('hardwareItem').value;
+            const email = document.getElementById('email').value;
+            const empId = document.getElementById('empId').value;
+            if(!email || !empId) return alert("Fill all fields");
+
+            const request = { item, email, empId, status: 'Pending', time: new Date().toLocaleString() };
+            let requests = JSON.parse(localStorage.getItem('hwRequests') || '[]');
+            requests.push(request);
+            localStorage.setItem('hwRequests', JSON.stringify(requests));
+            document.getElementById('statusMsg').innerText = "Request submitted! Status: Pending";
+            document.getElementById('detailsForm').style.display = 'none';
+        }
+
+        function login() {
+            if(document.getElementById('pass').value === 'Admin123') {
+                showPage('adminPanel');
+                loadData();
+            } else { alert("Wrong Password!"); }
+        }
+
+        function loadData() {
+            const requests = JSON.parse(localStorage.getItem('hwRequests') || '[]');
+            const tbody = document.getElementById('reqBody');
+            tbody.innerHTML = '';
+            requests.forEach((r, index) => {
+                tbody.innerHTML += `<tr><td>${r.item}</td><td>${r.email}</td><td>${r.empId}</td><td>${r.time}</td><td>${r.status}</td>
+                <td>${r.status === 'Pending' ? '<button onclick="closeReq('+index+')">Close</button>' : ''}</td></tr>`;
+            });
+        }
+
+        function closeReq(index) {
+            let requests = JSON.parse(localStorage.getItem('hwRequests'));
+            requests[index].status = 'Closed';
+            localStorage.setItem('hwRequests', JSON.stringify(requests));
+            loadData();
+        }
+
+        function downloadCSV() {
+            const reqs = JSON.parse(localStorage.getItem('hwRequests') || '[]');
+            let csv = "Item,Email,EmpID,Time,Status\n";
+            reqs.forEach(r => csv += `${r.item},${r.email},${r.empId},${r.time},${r.status}\n`);
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = 'requests.csv'; a.click();
+        }
+    </script>
+</body>
+</html>
